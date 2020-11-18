@@ -61,22 +61,30 @@ def next_frame_prediction(generator, input_tensor):
     output_tensor = generator.inference(input_tensor, None, None)
     return output_tensor
 
-def extract_frames_from_video(video_path, frame_dir, output_shape=(1280, 736), ffmpeg_verbosity=16):
+def extract_frames_from_video(video_path, frame_dir, output_shape=(1280, 736), ffmpeg_verbosity=16, start=None, to=None):
     """Extract all frames from a video
       - scale down the frames to match the desired height
       - crop to the desired width
     ex: 1920x1080 --> 1308x736 --> 1280x736
     """
     width, height = output_shape
-    command = """ffmpeg -v %d -i %s -q:v 2 -vf "scale=iw*%d/ih:%d, crop=%d:%d" %s/frame-%%06d.jpg -hide_banner""" % (
+    command = 'ffmpeg -v %d -i %s -q:v 2' % (
         ffmpeg_verbosity,
-        video_path,
-        height,
-        height,
-        width,
-        height,
-        frame_dir
+        video_path
     )
+    if width is not None and height is not None:
+        command += ''' -vf "scale=iw*%d/ih:%d, crop=%d:%d"''' % (
+            height,
+            height,
+            width,
+            height
+        )
+    if start is not None:
+        command += " -ss %s" % (start)
+    if to is not None:
+        command += " -to %s" % (to)
+
+    command += " %s/frame-%%06d.jpg -hide_banner" % (frame_dir)
     print(command)
     print("extracting the frames")
     p = subprocess.Popen(shlex.split(command), shell=False)

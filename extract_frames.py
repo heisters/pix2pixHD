@@ -10,8 +10,10 @@ parser = argparse.ArgumentParser(description="""build a "frame dataset" from a g
 parser.add_argument('-video', '--input-video', dest="input_video", help='input video', required=True)
 parser.add_argument('-name', '--dataset-name', dest="dataset_name", help='dataset name', required=True)
 parser.add_argument('-p2pdir', '--pix2pix-dir', dest="pix2pix_dir", help='pix2pix directory', required=True)
-parser.add_argument('-width', '--width', help='output width', default=1280, type=int)
-parser.add_argument('-height', '--height', help='output height', default=736, type=int)
+parser.add_argument('-width', '--width', help='output width', type=int)
+parser.add_argument('-height', '--height', help='output height', type=int)
+parser.add_argument('-start', '--start', help='timecode to start from')
+parser.add_argument('-to', '--to', help='timecode to end at')
 args = parser.parse_args()
 
 if not os.path.isfile(args.input_video):
@@ -20,7 +22,7 @@ if not os.path.isfile(args.input_video):
 if not os.path.isdir(args.pix2pix_dir):
     raise Exception("pix2pix directory does not exist")
 
-if (args.width % 32 !=0) or (args.height % 32 !=0):
+if ( args.width is not None and (args.width % 32 !=0) ) or ( args.height is not None and (args.height % 32 !=0) ):
 	raise Exception("please use width and height values that are divisible by 32")
 
 print("creating the dataset structure")
@@ -32,7 +34,9 @@ os.mkdir(dataset_dir + "/test_frames")
 video_utils.extract_frames_from_video(
 	os.path.realpath(args.input_video),
 	dataset_dir + "/train_frames",
-	output_shape=(args.width, args.height)
+	output_shape=(args.width, args.height),
+        start=args.start,
+        to=args.to
 )
 
 # copy first few frames to, for example, start the generated videos
