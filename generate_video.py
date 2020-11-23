@@ -24,6 +24,8 @@ opt.label_nc = 0
 opt.no_instance = True
 opt.resize_or_crop = "none"
 
+if opt.gen_strategy != "map": opt.map_future_frames = 0
+
 # loading initial frames from: ./datasets/NAME/test_frames
 data_loader = CreateDataLoader(opt)
 dataset = data_loader.load_data()
@@ -39,15 +41,17 @@ if os.path.isdir(frame_dir):
     shutil.rmtree(frame_dir)
 os.mkdir(frame_dir)
 
+
 frame_index = 1
 
 if opt.start_from == "noise":
     # careful, default value is 1024x512
     t = torch.rand(1, 3, opt.fineSize, opt.loadSize)
 
-elif opt.start_from  == "video":
+elif opt.start_from  == "video" and opt.gen_strategy == "recursive":
     # use initial frames from the dataset
-    for data in dataset:
+    print("Generating seed tensors...")
+    for data in tqdm(dataset):
         t = data['left_frame']
         video_utils.save_tensor(
             t,
@@ -55,6 +59,8 @@ elif opt.start_from  == "video":
             text="original video",
         )
         frame_index += 1
+
+
 else:
     # use specified image
     filepath = opt.start_from
@@ -67,7 +73,11 @@ else:
             )
             frame_index += 1
 
-current_frame = t
+current_frame = None
+if opt.gen_strategy == "recursive":
+    current_frame = t
+elif opt.gen_strategy == "map":
+    frame_index = 1
 
 duration_s = opt.how_many / opt.fps
 video_id = "epoch-%s_%s_%.1f-s_%.1f-fps%s" % (
@@ -80,20 +90,23 @@ video_id = "epoch-%s_%s_%.1f-s_%.1f-fps%s" % (
 
 model = create_model(opt)
 
-for i in tqdm(range(opt.how_many)):
-    next_frame = video_utils.next_frame_prediction(model, current_frame)
+for i, data in tqdm(zip(range(opt.how_many), dataset), total=opt.how_many):
+    if opt.gen_strategy == "map": current_frame = data['left_frame']
+    for j in range(opt.map_future_frames):
+        next_frame = video_utils.next_frame_prediction(model, current_frame)
 
-    if opt.zoom_lvl != 0:
-        next_frame = image_transforms.zoom_in(next_frame, zoom_level=opt.zoom_lvl)
+        if opt.zoom_lvl != 0:
+            next_frame = image_transforms.zoom_in(next_frame, zoom_level=opt.zoom_lvl)
 
-    if opt.heat_seeking_lvl != 0:
-        next_frame = image_transforms.heat_seeking(next_frame, translation_level=opt.heat_seeking_lvl, zoom_level=opt.heat_seeking_lvl)
+        if opt.heat_seeking_lvl != 0:
+            next_frame = image_transforms.heat_seeking(next_frame, translation_level=opt.heat_seeking_lvl, zoom_level=opt.heat_seeking_lvl)
+        current_frame = next_frame
 
     video_utils.save_tensor(
         next_frame, 
         frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
     )
-    current_frame = next_frame
+
     frame_index+=1
 
 video_path = output_dir + "/" + video_id + ".mp4"

@@ -14,4 +14,6 @@ class TestOptions(BaseOptions):
         self.parser.add_argument("--export_onnx", type=str, help="export ONNX model to a given file")
         self.parser.add_argument("--engine", type=str, help="run serialized TRT engine")
         self.parser.add_argument("--onnx", type=str, help="run ONNX model via TRT")        
+        self.parser.add_argument("--gen_strategy", type=str, default='recursive', help='strategy for generating new frames. "recursive" (default) feeds each frame into the next iteration of the generator, "map" generates the next frame for every frame in the dataset.')        
+        self.parser.add_argument("--map_future_frames", type=int, default=0, help='number of frames in the future the map generation strategy should predict')
         self.isTrain = False

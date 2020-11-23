@@ -14,6 +14,11 @@ parser.add_argument('-width', '--width', help='output width', type=int)
 parser.add_argument('-height', '--height', help='output height', type=int)
 parser.add_argument('-start', '--start', help='timecode to start from')
 parser.add_argument('-to', '--to', help='timecode to end at')
+parser.add_argument('--extract-train', dest='extract_train', action='store_true')
+parser.add_argument('--no-extract-train', dest='extract_train', action='store_false')
+parser.add_argument('--extract-test', dest='extract_test', action='store_true')
+parser.add_argument('--no-extract-test', dest='extract_test', action='store_false')
+parser.set_defaults(extract_train=True, extract_test=True)
 args = parser.parse_args()
 
 if not os.path.isfile(args.input_video):
@@ -28,21 +33,30 @@ if ( args.width is not None and (args.width % 32 !=0) ) or ( args.height is not 
 print("creating the dataset structure")
 dataset_dir = os.path.realpath(args.pix2pix_dir) + '/datasets/' + args.dataset_name
 os.mkdir(dataset_dir)
-os.mkdir(dataset_dir + "/train_frames")
-os.mkdir(dataset_dir + "/test_frames")
+if args.extract_train: os.mkdir(dataset_dir + "/train_frames") 
+if args.extract_test: os.mkdir(dataset_dir + "/test_frames") 
 
-video_utils.extract_frames_from_video(
-	os.path.realpath(args.input_video),
-	dataset_dir + "/train_frames",
-	output_shape=(args.width, args.height),
-        start=args.start,
-        to=args.to
-)
-
-# copy first few frames to, for example, start the generated videos
-for frame in sorted(glob(dataset_dir + "/train_frames/*.jpg"))[:60]:
-    shutil.copy(
-        frame,
-        dataset_dir + "/test_frames"
+if args.extract_train:
+    video_utils.extract_frames_from_video(
+            os.path.realpath(args.input_video),
+            dataset_dir + "/train_frames",
+            output_shape=(args.width, args.height),
+            start=args.start,
+            to=args.to
     )
 
+    if args.extract_test:
+        # copy first few frames to, for example, start the generated videos
+        for frame in sorted(glob(dataset_dir + "/train_frames/*.jpg"))[:60]:
+            shutil.copy(
+                frame,
+                dataset_dir + "/test_frames"
+            )
+elif args.extract_test:
+    video_utils.extract_frames_from_video(
+            os.path.realpath(args.input_video),
+            dataset_dir + "/test_frames",
+            output_shape=(args.width, args.height),
+            start=args.start,
+            to=args.to
+    )
